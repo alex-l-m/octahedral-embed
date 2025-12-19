@@ -6,7 +6,7 @@ from rdkit.Chem.AllChem import ConstrainedEmbed
 from rdkit.Chem.rdChemReactions import ReactionFromSmarts
 from rdkit.Chem.rdmolops import RemoveStereochemistry
 
-def make_bonds_dative(mol, target_elem = "Ir"):
+def make_bonds_dative(mol, target_elem="Ir"):
     editable_mol = RWMol(mol)
 
     # If you don't make a list, it loops infinitely over the bonds it's creating
@@ -56,7 +56,7 @@ def make_bonds_dative(mol, target_elem = "Ir"):
 
     return outmol
 
-def transfer_conformation(mol, substruct, conformer = 0):
+def transfer_conformation(mol, substruct, conformer=0):
     '''Given a molecule, and a second molecule which is a substructure of the
     first, assign coordinates to the substructure based on the matching part of
     the original molecule'''
@@ -157,10 +157,10 @@ def octahedral_embed(mol, isomer):
         if len(mol.GetSubstructMatch(skeleton)) > 0:
             # Carbene embedding with a large template gives output "Could not
             # triangle bounds smooth molecule" and raises a ValueError. But
-            # with a small template the imidazole is hroribly twisted, probably
+            # with a small template the imidazole is horribly twisted, probably
             # because it thinks the atoms are aliphatic. Ignoring smoothing
             # failures with the large template, it works
-            ConstrainedEmbed(mol, skeleton, ignoreSmoothingFailures = True)
+            ConstrainedEmbed(mol, skeleton, ignoreSmoothingFailures=True)
             finished = True
     if not finished:
         raise ValueError("Doesn't match templates")
