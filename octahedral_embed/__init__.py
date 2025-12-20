@@ -79,45 +79,27 @@ RemoveStereochemistry(carbene_fac)
 carbene_mer = make_bonds_dative(MolFromMol2File(os.path.join(__path__[0], "MAXYOA.mol2")))
 RemoveStereochemistry(carbene_mer)
 
-# Extract skeletons of a molecule based on a template, keeping coordinates
-# Multiple skeletons because I don't know how to do wildcards
-def skeleton(template, mol):
-    template_matches = mol.GetSubstructMatches(template)
-    matching_indices = set(sum(template_matches, ()))
-    editable_mol = RWMol(mol)
-    editable_mol.BeginBatchEdit()
-    for atom in editable_mol.GetAtoms():
-        # Remove all atoms except the matching ones
-        if atom.GetIdx() not in matching_indices:
-            editable_mol.RemoveAtom(atom.GetIdx())
-        # All the atoms should have formal charge 0, not sure why they don't
-        atom.SetFormalCharge(0)
-    editable_mol.CommitBatchEdit()
-    skeleton_mol = editable_mol.GetMol()
-    return skeleton_mol
+facmer_skeleton_smarts = (
+    "[Ir]123"
+    "(~[n]~[a]~[a]~[c]~1)"
+    "(~[n]~[a]~[a]~[c]~2)"
+    "(~[n]~[a]~[a]~[c]~3)"
+)
 
-fac_skeleton = skeleton(template, fac)
-mer_skeleton = skeleton(template, mer)
+fac_skeleton = MolFromSmarts(facmer_skeleton_smarts)
+transfer_conformation(fac, fac_skeleton)
 
-# Making the carbene skeletons in a completely different way
-# I probably am going to want to do this for all of them
+mer_skeleton = MolFromSmarts(facmer_skeleton_smarts)
+transfer_conformation(mer, mer_skeleton)
+
 carbene_skeleton_smarts = "[Ir]135(<-[CH0](~N(~*)~*~2)~N(~*~2)~c~c~1)(<-[CH0](~N(~*)~*~4)~N(~*~4)~c~c~3)(<-[CH0](~N(~*)~*~6)~N(~*~6)~c~c~5)"
 carbene_fac_skeleton = MolFromSmarts(carbene_skeleton_smarts)
 transfer_conformation(carbene_fac, carbene_fac_skeleton)
 carbene_mer_skeleton = MolFromSmarts(carbene_skeleton_smarts)
 transfer_conformation(carbene_mer, carbene_mer_skeleton)
 
-def run_three_times(mol, reaction):
-    for i in range(3):
-        mol = reaction.RunReactants([mol])[0][0]
-    return mol
-reactions = [
-    ReactionFromSmarts("[Ir:1]1<-[n:2]:[n:3]~[c:4]:[c:5]~1>>[Ir:1]1<-[n:2]:[c:3]~[n:4]:[c:5]~1"),
-    ReactionFromSmarts("[Ir:1]1<-[n:2]:[n:3]~[c:4]:[c:5]~1>>[Ir:1]1<-[n:2]:[n:3]~[n:4]:[c:5]~1"),
-    ReactionFromSmarts("[Ir:1]1<-[n:2]:[n:3]~[c:4]:[c:5]~1>>[Ir:1]1<-[n:2]:[c:3]~[c:4]:[c:5]~1")
-]
-fac_skeletons = [fac_skeleton] + [run_three_times(fac_skeleton, reaction) for reaction in reactions] + [carbene_fac_skeleton]
-mer_skeletons = [mer_skeleton] + [run_three_times(mer_skeleton, reaction) for reaction in reactions] + [carbene_mer_skeleton]
+fac_skeletons = [fac_skeleton, carbene_fac_skeleton]
+mer_skeletons = [mer_skeleton, carbene_mer_skeleton]
 
 # Skeletons for tridentate carbenes
 # I may have to remake these later if I want to control the isomers
