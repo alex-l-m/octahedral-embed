@@ -6,6 +6,7 @@ from rdkit.Chem.rdmolfiles import MolFromMol2File, MolFromSmarts, MolFromSmiles
 from rdkit.Chem.AllChem import ConstrainedEmbed
 from rdkit.Chem.rdChemReactions import ReactionFromSmarts
 from rdkit.Chem.rdmolops import RemoveStereochemistry, CombineMols, SanitizeMol, Kekulize
+from rdkit.Chem.rdMolTransforms import CanonicalizeConformer
 
 def ligate(ligands, metal_atom_element = "Ir", metal_atom = None):
     for ligand in ligands:
@@ -107,6 +108,35 @@ def make_bonds_dative(mol, target_elem="Ir"):
 
     return outmol
 
+def load_template(filename):
+    inpath = os.path.join(__path__[0], filename)
+    # Load, sanitized, without hydrogens
+    # Loading without hydrogens is fine because they're not going to be used
+    # for matching the template
+    # Sanitizing is fine, even though these templates are from the CSD, because
+    # while not all CSD molecules sanitize, I'm only using the ones that do as
+    # templates
+    raw_mol = MolFromMol2File(inpath)
+    # Stereochemistry makes template matching more strict
+    RemoveStereochemistry(raw_mol)
+    # Convert from CSD bond conventions, to respect RDKit valence rules
+    dative_mol = make_bonds_dative(raw_mol)
+    # Center the molecule
+    # First, retrieve the index of the iridium atom
+    target_index = None
+    for atom in dative_mol.GetAtoms():
+        element = atom.GetSymbol()
+        if element == 'Ir':
+            target_index = atom.GetIdx()
+            break
+    assert target_index is not None
+    # Then, retrieve the coordinates of the iridium atom in the geometry
+    geometry = dative_mol.GetConformer()
+    target_point = geometry.GetAtomPosition(target_index)
+    # Finally, use these coordinates as the center
+    CanonicalizeConformer(geometry, center=target_point)
+    return dative_mol
+
 def transfer_conformation(mol, substruct, conformer=0):
     '''Given a molecule, and a second molecule which is a substructure of the
     first, assign coordinates to the substructure based on the matching part of
@@ -118,17 +148,13 @@ def transfer_conformation(mol, substruct, conformer=0):
         substruct_conformation.SetAtomPosition(i, point)
     substruct.AddConformer(substruct_conformation)
 
-fac = make_bonds_dative(MolFromMol2File(os.path.join(__path__[0], "OHUZEW.mol2")))
-RemoveStereochemistry(fac)
-mer = make_bonds_dative(MolFromMol2File(os.path.join(__path__[0], "OHUZIA.mol2")))
-RemoveStereochemistry(mer)
+fac = load_template("OHUZEW.mol2")
+mer = load_template("OHUZIA.mol2")
 
 template = MolFromSmarts("[Ir]1~n:[*]~[*]:c~1")
 
-carbene_fac = make_bonds_dative(MolFromMol2File(os.path.join(__path__[0], "MAXYIU.mol2")))
-RemoveStereochemistry(carbene_fac)
-carbene_mer = make_bonds_dative(MolFromMol2File(os.path.join(__path__[0], "MAXYOA.mol2")))
-RemoveStereochemistry(carbene_mer)
+carbene_fac = load_template("MAXYIU.mol2")
+carbene_mer = load_template("MAXYOA.mol2")
 
 # Extract skeletons of a molecule based on a template, keeping coordinates
 # Multiple skeletons because I don't know how to do wildcards
@@ -174,18 +200,17 @@ mer_skeletons = [mer_skeleton] + [run_three_times(mer_skeleton, reaction) for re
 # I may have to remake these later if I want to control the isomers
 # For now I think it doesn't matter because all the carbene ligands are symmetric?
 # For homoleptic:
-biplet = make_bonds_dative(MolFromMol2File(os.path.join(__path__[0], "BIPLET.mol2")))
+biplet = load_template("BIPLET.mol2")
 biplet_skeleton = MolFromSmarts('[Ir]1234(~[#6](~[#7](~[#6])~[#6])~[#7]~c~c~1~c~[#7]~[#6](~[#7](~[#6])~[#6])~2)~[#6](~[#7](~[#6])~[#6])~[#7]~c~c~3~c~[#7]~[#6](~[#7](~[#6])~[#6])~4')
 transfer_conformation(biplet, biplet_skeleton)
 # For heteroleptic, three with counterligands of different size
-soynom = make_bonds_dative(MolFromMol2File(os.path.join(__path__[0], "SOYNOM.mol2")))
-RemoveStereochemistry(soynom)
+soynom = load_template("SOYNOM.mol2")
 soynom_skeleton = MolFromSmarts('[Ir]1234(~*~*~*~*~1~*~*~*~2)~[#6](~[#7](~[#6])~[#6])~[#7]~c~c~3~c~[#7]~[#6](~[#7](~[#6])~[#6])~4')
 transfer_conformation(soynom, soynom_skeleton)
-uyokur = make_bonds_dative(MolFromMol2File(os.path.join(__path__[0], "UYOKUR.mol2")))
+uyokur = load_template("UYOKUR.mol2")
 uyokur_skeleton = MolFromSmarts('[Ir]1234(~*~*~*~*~*~1~*~*~*~2)~[#6](~[#7](~[#6])~[#6])~[#7]~c~c~3~c~[#7]~[#6](~[#7](~[#6])~[#6])~4')
 transfer_conformation(uyokur, uyokur_skeleton)
-egufiz = make_bonds_dative(MolFromMol2File(os.path.join(__path__[0], "EGUFIZ.mol2")))
+egufiz = load_template("EGUFIZ.mol2")
 egufiz_skeleton = MolFromSmarts('[Ir]1234(~*~*~*~*~*~1~*~*~*~*~2)~[#6](~[#7](~[#6])~[#6])~[#7]~c~c~3~c~[#7]~[#6](~[#7](~[#6])~[#6])~4')
 transfer_conformation(egufiz, egufiz_skeleton)
 # Homoleptic has to go first, since a later pattern can cover it
