@@ -9,7 +9,16 @@ Provides the function `octahedral_embed` to add coordinates to RDKit molecules, 
 
 Currently, octahedral\_embed works for NC ligands, generating in the fac or mer isomers.
 
+## Installation
+
+To install, run in the repo root:
+
+```
+pip install .
+```
+
 There are no dependencies besides RDKit itself.
+However this dependency is not enforced, so install into an environment that already has RDKit.
 
 ## Usage
 
