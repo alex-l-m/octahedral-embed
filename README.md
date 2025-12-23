@@ -4,8 +4,8 @@ Provides the function `octahedral_embed` to add coordinates to RDKit molecules, 
 ## Functionality
 
 `octahedral_embed` is intended to be used in place of RDKit's `EmbedMolecule`, solving two problems: that `EmbedMolecule` is not parametrized for metals and will often produce incorrect coordination geometry, and that when it does provide the right coordination, the isomer will be random rather than controlled.
-octahedral\_embed works by matching the input molecule to a template "core", containing the iridium and surrounding atoms, extracted from a crystal structure.
-octahedral\_embed provides control over the isomer through the "isomer" argument, by selecting a template with the right isomer.
+`octahedral\_embed` works by matching the input molecule to a template "core", containing the iridium and surrounding atoms, extracted from a crystal structure.
+`octahedral\_embed` provides control over the isomer through the `isomer` argument, by selecting a template with the right isomer.
 
 Currently, octahedral\_embed works for NC ligands, generating in the fac or mer isomers.
 
@@ -30,7 +30,7 @@ No return value.
 
 ### Function `ligate`
 
-For convenience, there is also a "ligate" function that will attach ligands to iridium, without adding a geometry.
+For convenience, there is also a `ligate` function that will attach ligands to iridium, without adding a geometry.
 Ligands must be given as RDKit molecules, with bonds to dummy atoms (symbol "*") where the ligand chelates the metal.
 
 ```
@@ -43,7 +43,7 @@ ligate(ligands, metal_atom_element="Ir", metal_atom=None)
 
 * `metal_atom`: As an optional alternative to specifying `metal_atom_element`, an RDKit `Atom` object to chelate to.
 
-Returns: a combined RDKit `Mol` containing the metal with ligands attached, at the same bond types and at the same types as the dummy atoms in the input ligands.
+Returns: an RDKit `Mol` containing the metal with ligands attached, bonding to the metal at the same sites and with the same bond types as they were bonded to the dummy atoms.
 
 ## Example
 
