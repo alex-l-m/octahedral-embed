@@ -1,13 +1,15 @@
-Geometry generation for iridium-based phosphorescent emitter molecules.
-Provides the function `octahedral_embed` to add coordinates to RDKit molecules, using RDKit's distance geometry, with control of the isomer.
+Template-based geometry generation for iridium-based phosphorescent emitter molecules, with explicit fac/mer control.
+Provides the function `octahedral_embed` to add coordinates to RDKit molecules, using RDKit's distance geometry but constrained to correct octahedral coordination, with control of the isomer.
 
 ## Functionality
 
 `octahedral_embed` is intended to be used in place of RDKit's `EmbedMolecule`, solving two problems: that `EmbedMolecule` is not parametrized for metals and will often produce incorrect coordination geometry, and that when it does provide the right coordination, the isomer will be random rather than controlled.
-`octahedral\_embed` works by matching the input molecule to a template "core", containing the iridium and surrounding atoms, extracted from a crystal structure.
-`octahedral\_embed` provides control over the isomer through the `isomer` argument, by selecting a template with the right isomer.
+`octahedral_embed` works by matching the input molecule to a template "core", containing the iridium and surrounding atoms.
+`octahedral_embed` provides control over the isomer through the `isomer` argument, by selecting a template with the right isomer.
 
-Currently, octahedral\_embed works for NC ligands, generating in the fac or mer isomers.
+Currently, `octahedral_embed` works for N^C ligands, generating the fac or mer isomers.
+
+Templates are currently based on crystal structures from the Cambridge Structural Database.
 
 ## Installation
 
@@ -17,8 +19,8 @@ To install, run in the repo root:
 pip install .
 ```
 
-There are no dependencies besides RDKit itself.
-However this dependency is not enforced, so install into an environment that already has RDKit.
+The only dependency is RDKit itself.
+This dependency is not enforced, so install into an environment that already has RDKit.
 
 ## Usage
 
@@ -26,23 +28,23 @@ However this dependency is not enforced, so install into an environment that alr
 
 The usage of `octahedral_embed` is similar to RDKit's `EmbedMolecule`, but with an extra `isomer` argument.
 
-```
+```python
 octahedral_embed(rdkit_mol, isomer)
 ```
 
-* `mol`: RDKit `Mol` (expected to have explicit hydrogens)
+* `rdkit_mol`: RDKit `Mol` (expected to have explicit hydrogens)
 
 * `isomer`: `"fac"` or `"mer"`
 
-Adds a conformer in-place, replacing any existing conformers.
-No return value.
+Modifies `rdkit_mol` in place, and returns nothing.
+Removes all conformers, and adds one new conformer.
 
 ### Function `ligate`
 
 For convenience, there is also a `ligate` function that will attach ligands to iridium, without adding a geometry.
 Ligands must be given as RDKit molecules, with bonds to dummy atoms (symbol "*") where the ligand chelates the metal.
 
-```
+```python
 ligate(ligands, metal_atom_element="Ir", metal_atom=None)
 ```
 
@@ -58,7 +60,7 @@ Returns: an RDKit `Mol` containing the metal with ligands attached, bonding to t
 
 As an example, consider generating the geometry of Ir(ppy)₃.
 
-```
+```python
 from rdkit import Chem
 from octahedral_embed import ligate, octahedral_embed
 
