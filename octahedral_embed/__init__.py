@@ -1,19 +1,25 @@
 import os.path
 from functools import reduce
+from typing import List, Optional, Sequence, Literal, cast
 from rdkit import Chem
-from rdkit.Chem.rdchem import RWMol, Conformer, Mol
+from rdkit.Chem.rdchem import RWMol, Conformer, Mol, Atom
 from rdkit.Chem.rdmolfiles import MolFromMol2File, MolFromSmarts, MolFromSmiles
 from rdkit.Chem.AllChem import ConstrainedEmbed
 from rdkit.Chem.rdChemReactions import ReactionFromSmarts
 from rdkit.Chem.rdmolops import RemoveStereochemistry, CombineMols, SanitizeMol, Kekulize
 from rdkit.Chem.rdMolTransforms import CanonicalizeConformer
 
-def ligate(ligands, metal_atom_element = "Ir", metal_atom = None):
+def ligate(
+    ligands: Sequence[Mol],
+    metal_atom_element: str = "Ir",
+    metal_atom : Optional[Mol] = None,
+) -> Mol:
     for ligand in ligands:
         ligand.RemoveAllConformers()
         Kekulize(ligand)
     if metal_atom is None:
         metal_atom = MolFromSmiles(f"[{metal_atom_element}]")
+    assert metal_atom is not None
     # Create a molecule that contains the metal atom as well as all the
     # ligands, but without bonds between the metal and the ligands
     mol = reduce(CombineMols, ligands, metal_atom)
@@ -58,14 +64,16 @@ def ligate(ligands, metal_atom_element = "Ir", metal_atom = None):
     SanitizeMol(outmol)
     return outmol
 
-def make_bonds_dative(mol, target_elem="Ir"):
+def make_bonds_dative(mol: Mol, target_elem: str = "Ir") -> Mol:
     editable_mol = RWMol(mol)
 
     # If you don't make a list, it loops infinitely over the bonds it's creating
     for bond in list(editable_mol.GetBonds()):
-        iridium = None
-        nitrogen = None
-        carbene = None
+        iridium: Optional[Atom] = None
+        nitrogen: Optional[Atom] = None
+        carbene: Optional[Atom] = None
+        start_idx: Optional[int] = None
+        end_idx: Optional[int] = None
         if bond.GetBeginAtom().GetSymbol() == target_elem and \
                 bond.GetEndAtom().GetSymbol() in ["N", "P"] and \
                 bond.GetEndAtom().GetFormalCharge() == 1:
@@ -100,6 +108,7 @@ def make_bonds_dative(mol, target_elem="Ir"):
             nitrogen.SetFormalCharge(0)
 
         if iridium is not None and (nitrogen is not None or carbene is not None):
+            assert start_idx is not None and end_idx is not None
             editable_mol.RemoveBond(start_idx, end_idx)
             editable_mol.AddBond(start_idx, end_idx, Chem.rdchem.BondType.DATIVE)
 
@@ -108,7 +117,7 @@ def make_bonds_dative(mol, target_elem="Ir"):
 
     return outmol
 
-def load_template(filename):
+def load_template(filename: str) -> Mol:
     inpath = os.path.join(__path__[0], filename)
     # Load, sanitized, without hydrogens
     # Loading without hydrogens is fine because they're not going to be used
@@ -117,13 +126,14 @@ def load_template(filename):
     # while not all CSD molecules sanitize, I'm only using the ones that do as
     # templates
     raw_mol = MolFromMol2File(inpath)
+    assert raw_mol is not None
     # Stereochemistry makes template matching more strict
     RemoveStereochemistry(raw_mol)
     # Convert from CSD bond conventions, to respect RDKit valence rules
     dative_mol = make_bonds_dative(raw_mol)
     # Center the molecule
     # First, retrieve the index of the iridium atom
-    target_index = None
+    target_index: Optional[int] = None
     for atom in dative_mol.GetAtoms():
         element = atom.GetSymbol()
         if element == 'Ir':
@@ -137,7 +147,7 @@ def load_template(filename):
     CanonicalizeConformer(geometry, center=target_point)
     return dative_mol
 
-def transfer_conformation(mol, substruct, conformer=0):
+def transfer_conformation(mol: Mol, substruct: Mol, conformer: int = 0) -> None:
     '''Given a molecule, and a second molecule which is a substructure of the
     first, assign coordinates to the substructure based on the matching part of
     the original molecule'''
@@ -151,7 +161,7 @@ def transfer_conformation(mol, substruct, conformer=0):
 fac = load_template("OHUZEW.mol2")
 mer = load_template("OHUZIA.mol2")
 
-template = MolFromSmarts("[Ir]1~n:[*]~[*]:c~1")
+template = cast(Mol, MolFromSmarts("[Ir]1~n:[*]~[*]:c~1"))
 
 carbene_fac = load_template("MAXYIU.mol2")
 carbene_mer = load_template("MAXYOA.mol2")
@@ -163,42 +173,46 @@ facmer_skeleton_smarts = (
     "(~[n]~[a]~[a]~[c]~3)"
 )
 
-fac_skeleton = MolFromSmarts(facmer_skeleton_smarts)
+fac_skeleton = cast(Mol, MolFromSmarts(facmer_skeleton_smarts))
 transfer_conformation(fac, fac_skeleton)
 
-mer_skeleton = MolFromSmarts(facmer_skeleton_smarts)
+mer_skeleton = cast(Mol, MolFromSmarts(facmer_skeleton_smarts))
 transfer_conformation(mer, mer_skeleton)
 
 carbene_skeleton_smarts = "[Ir]135(<-[CH0](~N(~*)~*~2)~N(~*~2)~c~c~1)(<-[CH0](~N(~*)~*~4)~N(~*~4)~c~c~3)(<-[CH0](~N(~*)~*~6)~N(~*~6)~c~c~5)"
-carbene_fac_skeleton = MolFromSmarts(carbene_skeleton_smarts)
+carbene_fac_skeleton = cast(Mol, MolFromSmarts(carbene_skeleton_smarts))
 transfer_conformation(carbene_fac, carbene_fac_skeleton)
-carbene_mer_skeleton = MolFromSmarts(carbene_skeleton_smarts)
+carbene_mer_skeleton = cast(Mol, MolFromSmarts(carbene_skeleton_smarts))
 transfer_conformation(carbene_mer, carbene_mer_skeleton)
 
-fac_skeletons = [fac_skeleton, carbene_fac_skeleton]
-mer_skeletons = [mer_skeleton, carbene_mer_skeleton]
+fac_skeletons: List[Mol] = [fac_skeleton, carbene_fac_skeleton]
+mer_skeletons: List[Mol] = [mer_skeleton, carbene_mer_skeleton]
 
 # Skeletons for tridentate carbenes
 # I may have to remake these later if I want to control the isomers
 # For now I think it doesn't matter because all the carbene ligands are symmetric?
 # For homoleptic:
 biplet = load_template("BIPLET.mol2")
-biplet_skeleton = MolFromSmarts('[Ir]1234(~[#6](~[#7](~[#6])~[#6])~[#7]~c~c~1~c~[#7]~[#6](~[#7](~[#6])~[#6])~2)~[#6](~[#7](~[#6])~[#6])~[#7]~c~c~3~c~[#7]~[#6](~[#7](~[#6])~[#6])~4')
+biplet_skeleton = cast(Mol, MolFromSmarts('[Ir]1234(~[#6](~[#7](~[#6])~[#6])~[#7]~c~c~1~c~[#7]~[#6](~[#7](~[#6])~[#6])~2)~[#6](~[#7](~[#6])~[#6])~[#7]~c~c~3~c~[#7]~[#6](~[#7](~[#6])~[#6])~4'))
 transfer_conformation(biplet, biplet_skeleton)
 # For heteroleptic, three with counterligands of different size
 soynom = load_template("SOYNOM.mol2")
-soynom_skeleton = MolFromSmarts('[Ir]1234(~*~*~*~*~1~*~*~*~2)~[#6](~[#7](~[#6])~[#6])~[#7]~c~c~3~c~[#7]~[#6](~[#7](~[#6])~[#6])~4')
+soynom_skeleton = cast(Mol, MolFromSmarts('[Ir]1234(~*~*~*~*~1~*~*~*~2)~[#6](~[#7](~[#6])~[#6])~[#7]~c~c~3~c~[#7]~[#6](~[#7](~[#6])~[#6])~4'))
 transfer_conformation(soynom, soynom_skeleton)
 uyokur = load_template("UYOKUR.mol2")
-uyokur_skeleton = MolFromSmarts('[Ir]1234(~*~*~*~*~*~1~*~*~*~2)~[#6](~[#7](~[#6])~[#6])~[#7]~c~c~3~c~[#7]~[#6](~[#7](~[#6])~[#6])~4')
+uyokur_skeleton = cast(Mol, MolFromSmarts('[Ir]1234(~*~*~*~*~*~1~*~*~*~2)~[#6](~[#7](~[#6])~[#6])~[#7]~c~c~3~c~[#7]~[#6](~[#7](~[#6])~[#6])~4'))
 transfer_conformation(uyokur, uyokur_skeleton)
 egufiz = load_template("EGUFIZ.mol2")
-egufiz_skeleton = MolFromSmarts('[Ir]1234(~*~*~*~*~*~1~*~*~*~*~2)~[#6](~[#7](~[#6])~[#6])~[#7]~c~c~3~c~[#7]~[#6](~[#7](~[#6])~[#6])~4')
+egufiz_skeleton = cast(Mol, MolFromSmarts('[Ir]1234(~*~*~*~*~*~1~*~*~*~*~2)~[#6](~[#7](~[#6])~[#6])~[#7]~c~c~3~c~[#7]~[#6](~[#7](~[#6])~[#6])~4'))
 transfer_conformation(egufiz, egufiz_skeleton)
 # Homoleptic has to go first, since a later pattern can cover it
-tridentate_skeletons = [biplet_skeleton, soynom_skeleton, uyokur_skeleton, egufiz_skeleton]
+tridentate_skeletons: List[Mol] = [biplet_skeleton, soynom_skeleton, uyokur_skeleton, egufiz_skeleton]
 
-def octahedral_embed(mol, isomer, clearConfs=True):
+def octahedral_embed(
+    mol: Mol,
+    isomer: Literal['fac', 'mer', 'tridentate'],
+    clearConfs: bool = True,
+) -> int:
     # Make a copy of the molecule to avoid side effects (in particular, removing stereochemistry)
     work = Mol(mol)
     # Needed for some of the mol2 files I got from CSD
