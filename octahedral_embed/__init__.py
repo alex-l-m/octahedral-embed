@@ -1,4 +1,4 @@
-import os.path
+import os
 from functools import reduce
 from typing import List, Optional, Sequence, Literal, cast
 from rdkit import Chem
@@ -160,8 +160,6 @@ def transfer_conformation(mol: Mol, substruct: Mol, conformer: int = 0) -> None:
 
 fac = load_template("OHUZEW.mol2")
 mer = load_template("OHUZIA.mol2")
-
-template = cast(Mol, MolFromSmarts("[Ir]1~n:[*]~[*]:c~1"))
 
 carbene_fac = load_template("MAXYIU.mol2")
 carbene_mer = load_template("MAXYOA.mol2")
