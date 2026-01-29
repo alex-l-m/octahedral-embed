@@ -41,6 +41,8 @@ octahedral_embed(rdkit_mol, isomer, clearConfs=False)
 Modifies `rdkit_mol` in place, and returns nothing.
 Removes all conformers if clearConfs is True, then adds one new conformer.
 
+Returns the index of the added conformer.
+
 ### Function `ligate`
 
 For convenience, there is also a `ligate` function that will attach ligands to iridium, without adding a geometry.
