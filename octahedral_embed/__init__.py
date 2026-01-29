@@ -1,7 +1,7 @@
 import os.path
 from functools import reduce
 from rdkit import Chem
-from rdkit.Chem.rdchem import RWMol, Conformer
+from rdkit.Chem.rdchem import RWMol, Conformer, Mol
 from rdkit.Chem.rdmolfiles import MolFromMol2File, MolFromSmarts, MolFromSmiles
 from rdkit.Chem.AllChem import ConstrainedEmbed
 from rdkit.Chem.rdChemReactions import ReactionFromSmarts
@@ -198,10 +198,12 @@ transfer_conformation(egufiz, egufiz_skeleton)
 # Homoleptic has to go first, since a later pattern can cover it
 tridentate_skeletons = [biplet_skeleton, soynom_skeleton, uyokur_skeleton, egufiz_skeleton]
 
-def octahedral_embed(mol, isomer):
+def octahedral_embed(mol, isomer, clearConfs=True):
+    # Make a copy of the molecule to avoid side effects (in particular, removing stereochemistry)
+    work = Mol(mol)
     # Needed for some of the mol2 files I got from CSD
     # Will not be able to embed with stereochemistry
-    RemoveStereochemistry(mol)
+    RemoveStereochemistry(work)
     if isomer == "fac":
         skeletons = fac_skeletons
     elif isomer == "mer":
@@ -212,13 +214,18 @@ def octahedral_embed(mol, isomer):
         raise ValueError(f"Isomer should be \"mer\" or \"fac\", given {isomer}")
     finished = False
     for skeleton in skeletons:
-        if len(mol.GetSubstructMatch(skeleton)) > 0:
+        if len(work.GetSubstructMatch(skeleton)) > 0:
             # Carbene embedding with a large template gives output "Could not
             # triangle bounds smooth molecule" and raises a ValueError. But
             # with a small template the imidazole is horribly twisted, probably
             # because it thinks the atoms are aliphatic. Ignoring smoothing
             # failures with the large template, it works
-            ConstrainedEmbed(mol, skeleton, ignoreSmoothingFailures=True)
+            ConstrainedEmbed(work, skeleton, ignoreSmoothingFailures=True, clearConfs=True)
             finished = True
     if not finished:
         raise ValueError("Doesn't match templates")
+    # Copy the conformer back to the original molecule
+    new_conf = work.GetConformer()
+    if clearConfs:
+        mol.RemoveAllConformers()
+    return mol.AddConformer(new_conf, assignId=True)
