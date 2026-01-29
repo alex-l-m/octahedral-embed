@@ -29,15 +29,17 @@ This dependency is not enforced, so install into an environment that already has
 The usage of `octahedral_embed` is similar to RDKit's `EmbedMolecule`, but with an extra `isomer` argument.
 
 ```python
-octahedral_embed(rdkit_mol, isomer)
+octahedral_embed(rdkit_mol, isomer, clearConfs=False)
 ```
 
 * `rdkit_mol`: RDKit `Mol` (expected to have explicit hydrogens)
 
 * `isomer`: `"fac"` or `"mer"`
 
+* clearConfs: Boolean
+
 Modifies `rdkit_mol` in place, and returns nothing.
-Removes all conformers, and adds one new conformer.
+Removes all conformers if clearConfs is True, then adds one new conformer.
 
 ### Function `ligate`
 
