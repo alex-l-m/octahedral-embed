@@ -222,6 +222,7 @@ def octahedral_embed(mol, isomer, clearConfs=True):
             # failures with the large template, it works
             ConstrainedEmbed(work, skeleton, ignoreSmoothingFailures=True, clearConfs=True)
             finished = True
+            break
     if not finished:
         raise ValueError("Doesn't match templates")
     # Copy the conformer back to the original molecule
