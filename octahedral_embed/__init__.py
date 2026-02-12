@@ -186,29 +186,9 @@ transfer_conformation(carbene_mer, carbene_mer_skeleton)
 fac_skeletons: List[Mol] = [fac_skeleton, carbene_fac_skeleton]
 mer_skeletons: List[Mol] = [mer_skeleton, carbene_mer_skeleton]
 
-# Skeletons for tridentate carbenes
-# I may have to remake these later if I want to control the isomers
-# For now I think it doesn't matter because all the carbene ligands are symmetric?
-# For homoleptic:
-biplet = load_template("BIPLET.mol2")
-biplet_skeleton = cast(Mol, MolFromSmarts('[Ir]1234(~[#6](~[#7](~[#6])~[#6])~[#7]~c~c~1~c~[#7]~[#6](~[#7](~[#6])~[#6])~2)~[#6](~[#7](~[#6])~[#6])~[#7]~c~c~3~c~[#7]~[#6](~[#7](~[#6])~[#6])~4'))
-transfer_conformation(biplet, biplet_skeleton)
-# For heteroleptic, three with counterligands of different size
-soynom = load_template("SOYNOM.mol2")
-soynom_skeleton = cast(Mol, MolFromSmarts('[Ir]1234(~*~*~*~*~1~*~*~*~2)~[#6](~[#7](~[#6])~[#6])~[#7]~c~c~3~c~[#7]~[#6](~[#7](~[#6])~[#6])~4'))
-transfer_conformation(soynom, soynom_skeleton)
-uyokur = load_template("UYOKUR.mol2")
-uyokur_skeleton = cast(Mol, MolFromSmarts('[Ir]1234(~*~*~*~*~*~1~*~*~*~2)~[#6](~[#7](~[#6])~[#6])~[#7]~c~c~3~c~[#7]~[#6](~[#7](~[#6])~[#6])~4'))
-transfer_conformation(uyokur, uyokur_skeleton)
-egufiz = load_template("EGUFIZ.mol2")
-egufiz_skeleton = cast(Mol, MolFromSmarts('[Ir]1234(~*~*~*~*~*~1~*~*~*~*~2)~[#6](~[#7](~[#6])~[#6])~[#7]~c~c~3~c~[#7]~[#6](~[#7](~[#6])~[#6])~4'))
-transfer_conformation(egufiz, egufiz_skeleton)
-# Homoleptic has to go first, since a later pattern can cover it
-tridentate_skeletons: List[Mol] = [biplet_skeleton, soynom_skeleton, uyokur_skeleton, egufiz_skeleton]
-
 def octahedral_embed(
     mol: Mol,
-    isomer: Literal['fac', 'mer', 'tridentate'],
+    isomer: Literal['fac', 'mer'],
     clearConfs: bool = True,
 ) -> int:
     # Make a copy of the molecule to avoid side effects (in particular, removing stereochemistry)
@@ -220,8 +200,6 @@ def octahedral_embed(
         skeletons = fac_skeletons
     elif isomer == "mer":
         skeletons = mer_skeletons
-    elif isomer == "tridentate":
-        skeletons = tridentate_skeletons
     else:
         raise ValueError(f"Isomer should be \"mer\" or \"fac\", given {isomer}")
     finished = False
