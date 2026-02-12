@@ -1,13 +1,106 @@
 import os
+from typing import Any
 from functools import reduce
 from typing import List, Optional, Sequence, Literal, cast
 from rdkit import Chem
 from rdkit.Chem.rdchem import RWMol, Conformer, Mol, Atom
 from rdkit.Chem.rdmolfiles import MolFromMol2File, MolFromSmarts, MolFromSmiles
-from rdkit.Chem.AllChem import ConstrainedEmbed
 from rdkit.Chem.rdChemReactions import ReactionFromSmarts
 from rdkit.Chem.rdmolops import RemoveStereochemistry, CombineMols, SanitizeMol, Kekulize
 from rdkit.Chem.rdMolTransforms import CanonicalizeConformer
+from rdkit.Chem import rdDistGeom, rdForceFieldHelpers
+from rdkit.Chem.rdMolAlign import AlignMol
+
+
+def ConstrainedEmbed_withParams(
+    mol: Mol,
+    core: Mol,
+    useTethers: bool = True,
+    coreConfId: int = -1,
+    randomseed: Optional[int] = None,
+    getForceField: Any = rdForceFieldHelpers.UFFGetMoleculeForceField,
+    params: Optional[rdDistGeom.EmbedParameters] = None,
+) -> Mol:
+    """
+    Constrained embedding that honors an EmbedParameters object (timeout, maxIterations, ...).
+
+    Parameters
+    ----------
+    mol, core : RDKit Mol
+        'core' must be a substructure of 'mol'.
+    params : rdDistGeom.EmbedParameters, optional
+        e.g. rdDistGeom.ETKDGv3(). If None, defaults to rdDistGeom.ETKDGv3().
+
+    Returns
+    -------
+    mol : RDKit Mol
+        With a single embedded conformer and property 'EmbedRMS'.
+    """
+    match = mol.GetSubstructMatch(core)
+    if not match:
+        raise ValueError("molecule doesn't match the core")
+
+    # Build the coordMap using the core conformation we were asked to use:
+    coreConf = core.GetConformer(coreConfId)
+    coordMap = {mol_idx: coreConf.GetAtomPosition(core_atom_idx)
+                for core_atom_idx, mol_idx in enumerate(match)}
+
+    # Start from user params (or a sensible default)
+    if params is None:
+        params = rdDistGeom.ETKDGv3()
+    p = params
+
+    # Seed + constraints go onto the cloned params:
+    if randomseed is not None:
+        p.randomSeed = int(randomseed)
+    p.SetCoordMap(coordMap)
+
+    # Embed using the parameter object overload:
+    confId = rdDistGeom.EmbedMolecule(mol, p)
+    if confId < 0:
+        raise ValueError("Could not embed molecule.")
+
+    # Map for alignment: (probeAtomId, refAtomId)
+    algMap = [(mol_idx, core_atom_idx) for core_atom_idx, mol_idx in enumerate(match)]
+
+    if not useTethers:
+        # Distance-constraint cleanup on the newly generated conformer:
+        ff = getForceField(mol, confId=confId)
+        for i, idxI in enumerate(match):
+            for j in range(i + 1, len(match)):
+                idxJ = match[j]
+                d = coordMap[idxI].Distance(coordMap[idxJ])
+                ff.AddDistanceConstraint(idxI, idxJ, d, d, 100.0)
+
+        ff.Initialize()
+        n = 4
+        more = ff.Minimize()
+        while more and n:
+            more = ff.Minimize()
+            n -= 1
+
+        rms = AlignMol(mol, core, atomMap=algMap, prbCid=confId, refCid=coreConfId)
+    else:
+        # Align first, then add "tethers" to the core atom positions:
+        rms = AlignMol(mol, core, atomMap=algMap, prbCid=confId, refCid=coreConfId)
+
+        ff = getForceField(mol, confId=confId)
+        for core_atom_idx in range(core.GetNumAtoms()):
+            pt = coreConf.GetAtomPosition(core_atom_idx)
+            pIdx = ff.AddExtraPoint(pt.x, pt.y, pt.z, fixed=True) - 1
+            ff.AddDistanceConstraint(pIdx, match[core_atom_idx], 0, 0, 100.0)
+
+        ff.Initialize()
+        n = 4
+        more = ff.Minimize(energyTol=1e-4, forceTol=1e-3)
+        while more and n:
+            more = ff.Minimize(energyTol=1e-4, forceTol=1e-3)
+            n -= 1
+
+        rms = AlignMol(mol, core, atomMap=algMap, prbCid=confId, refCid=coreConfId)
+
+    mol.SetProp("EmbedRMS", str(rms))
+    return mol
 
 def ligate(
     ligands: Sequence[Mol],
@@ -193,9 +286,13 @@ def octahedral_embed(
 ) -> int:
     # Make a copy of the molecule to avoid side effects (in particular, removing stereochemistry)
     work = Mol(mol)
+
     # Needed for some of the mol2 files I got from CSD
     # Will not be able to embed with stereochemistry
     RemoveStereochemistry(work)
+
+    work.RemoveAllConformers()
+
     if isomer == "fac":
         skeletons = fac_skeletons
     elif isomer == "mer":
@@ -205,12 +302,22 @@ def octahedral_embed(
     finished = False
     for skeleton in skeletons:
         if len(work.GetSubstructMatch(skeleton)) > 0:
+            ps = rdDistGeom.ETKDGv3()
+
             # Carbene embedding with a large template gives output "Could not
             # triangle bounds smooth molecule" and raises a ValueError. But
             # with a small template the imidazole is horribly twisted, probably
             # because it thinks the atoms are aliphatic. Ignoring smoothing
-            # failures with the large template, it works
-            ConstrainedEmbed(work, skeleton, ignoreSmoothingFailures=True, clearConfs=True)
+            # failures with the large template, it works. Now I'm hoping that
+            # if I encode carbenes more reasonably, I won't have these issues.
+            # However, ignoring smoothing failures is always an option later if
+            # required.
+            #ps.ignoreSmoothingFailures = True
+            
+            ps.timeout = 5
+            ps.maxIterations = 20
+
+            work = ConstrainedEmbed_withParams(work, skeleton, params=ps)
             finished = True
             break
     if not finished:
