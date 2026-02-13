@@ -10,6 +10,7 @@ from rdkit.Chem.rdmolops import RemoveStereochemistry, CombineMols, SanitizeMol,
 from rdkit.Chem.rdMolTransforms import CanonicalizeConformer
 from rdkit.Chem import rdDistGeom, rdForceFieldHelpers
 from rdkit.Chem.rdMolAlign import AlignMol
+from .isoctahedral import isoctahedral
 
 # NOTE:
 # In some RDKit builds, UFFGetMoleculeForceField can return a
@@ -87,6 +88,12 @@ def ConstrainedEmbed_withParams(
     while more and n:
         more = ff.Minimize(energyTol=1e-4, forceTol=1e-3)
         n -= 1
+
+    if more != 0:
+        raise ValueError('Could not optimize molecule')
+
+    if not isoctahedral(mol, confId):
+        raise ValueError('Embedded molecule does not satisfy octahedral geometry')
 
     rms = AlignMol(mol, core, atomMap=algMap, prbCid=confId, refCid=coreConfId)
 
