@@ -25,7 +25,6 @@ import rdkit.ForceField.rdForceField  # noqa: F401
 def ConstrainedEmbed_withParams(
     mol: Mol,
     core: Mol,
-    useTethers: bool = True,
     coreConfId: int = -1,
     randomseed: Optional[int] = None,
     getForceField: Any = rdForceFieldHelpers.UFFGetMoleculeForceField,
@@ -73,41 +72,23 @@ def ConstrainedEmbed_withParams(
     # Map for alignment: (probeAtomId, refAtomId)
     algMap = [(mol_idx, core_atom_idx) for core_atom_idx, mol_idx in enumerate(match)]
 
-    if not useTethers:
-        # Distance-constraint cleanup on the newly generated conformer:
-        ff = getForceField(mol, confId=confId)
-        for i, idxI in enumerate(match):
-            for j in range(i + 1, len(match)):
-                idxJ = match[j]
-                d = coordMap[idxI].Distance(coordMap[idxJ])
-                ff.AddDistanceConstraint(idxI, idxJ, d, d, 100.0)
+    # Align first, then add "tethers" to the core atom positions:
+    rms = AlignMol(mol, core, atomMap=algMap, prbCid=confId, refCid=coreConfId)
 
-        ff.Initialize()
-        n = 4
-        more = ff.Minimize()
-        while more and n:
-            more = ff.Minimize()
-            n -= 1
+    ff = getForceField(mol, confId=confId)
+    for core_atom_idx in range(core.GetNumAtoms()):
+        pt = coreConf.GetAtomPosition(core_atom_idx)
+        pIdx = ff.AddExtraPoint(pt.x, pt.y, pt.z, fixed=True) - 1
+        ff.AddDistanceConstraint(pIdx, match[core_atom_idx], 0, 0, 100.0)
 
-        rms = AlignMol(mol, core, atomMap=algMap, prbCid=confId, refCid=coreConfId)
-    else:
-        # Align first, then add "tethers" to the core atom positions:
-        rms = AlignMol(mol, core, atomMap=algMap, prbCid=confId, refCid=coreConfId)
-
-        ff = getForceField(mol, confId=confId)
-        for core_atom_idx in range(core.GetNumAtoms()):
-            pt = coreConf.GetAtomPosition(core_atom_idx)
-            pIdx = ff.AddExtraPoint(pt.x, pt.y, pt.z, fixed=True) - 1
-            ff.AddDistanceConstraint(pIdx, match[core_atom_idx], 0, 0, 100.0)
-
-        ff.Initialize()
-        n = 4
+    ff.Initialize()
+    n = 4
+    more = ff.Minimize(energyTol=1e-4, forceTol=1e-3)
+    while more and n:
         more = ff.Minimize(energyTol=1e-4, forceTol=1e-3)
-        while more and n:
-            more = ff.Minimize(energyTol=1e-4, forceTol=1e-3)
-            n -= 1
+        n -= 1
 
-        rms = AlignMol(mol, core, atomMap=algMap, prbCid=confId, refCid=coreConfId)
+    rms = AlignMol(mol, core, atomMap=algMap, prbCid=confId, refCid=coreConfId)
 
     mol.SetProp("EmbedRMS", str(rms))
     return mol
