@@ -11,6 +11,16 @@ from rdkit.Chem.rdMolTransforms import CanonicalizeConformer
 from rdkit.Chem import rdDistGeom, rdForceFieldHelpers
 from rdkit.Chem.rdMolAlign import AlignMol
 
+# NOTE:
+# In some RDKit builds, UFFGetMoleculeForceField can return a
+# ForceFields::PyForceField instance. The Boost.Python class registration for
+# that type lives in rdkit.ForceField.rdForceField, and without importing it
+# first, you can see:
+#   TypeError: No Python class registered for C++ class ForceFields::PyForceField
+# Importing rdkit.ForceField.rdForceField ensures the wrapper classes are
+# registered before we call into force-field code.
+import rdkit.ForceField.rdForceField  # noqa: F401
+
 
 def ConstrainedEmbed_withParams(
     mol: Mol,
@@ -196,14 +206,22 @@ def make_bonds_dative(mol: Mol, target_elem: str = "Ir") -> Mol:
             start_idx = bond.GetBeginAtomIdx()
             end_idx = bond.GetEndAtomIdx()
 
+        # Convert from CSD bond conventions to RDKit-friendly ones.
+        #
+        # * N+/P+ - Ir single bonds are best represented as dative (N/P -> Ir)
+        #   to respect RDKit valence rules.
+        # * Carbene C - Ir single bonds (carbon total valence == 3) are encoded
+        #   here as *double bonds* (C=Ir) rather than dative bonds.
         if nitrogen is not None:
             # Replace N+ - Ir with N -> Ir
             nitrogen.SetFormalCharge(0)
-
-        if iridium is not None and (nitrogen is not None or carbene is not None):
             assert start_idx is not None and end_idx is not None
             editable_mol.RemoveBond(start_idx, end_idx)
             editable_mol.AddBond(start_idx, end_idx, Chem.rdchem.BondType.DATIVE)
+        elif iridium is not None and carbene is not None:
+            assert start_idx is not None and end_idx is not None
+            editable_mol.RemoveBond(start_idx, end_idx)
+            editable_mol.AddBond(start_idx, end_idx, Chem.rdchem.BondType.DOUBLE)
 
     outmol = editable_mol.GetMol()
     Chem.SanitizeMol(outmol)
@@ -270,7 +288,7 @@ transfer_conformation(fac, fac_skeleton)
 mer_skeleton = cast(Mol, MolFromSmarts(facmer_skeleton_smarts))
 transfer_conformation(mer, mer_skeleton)
 
-carbene_skeleton_smarts = "[Ir]135(<-[CH0](~N(~*)~*~2)~N(~*~2)~c~c~1)(<-[CH0](~N(~*)~*~4)~N(~*~4)~c~c~3)(<-[CH0](~N(~*)~*~6)~N(~*~6)~c~c~5)"
+carbene_skeleton_smarts = "[Ir]135(=[CH0](~N(~*)~*~2)~N(~*~2)~c~c~1)(=[CH0](~N(~*)~*~4)~N(~*~4)~c~c~3)(=[CH0](~N(~*)~*~6)~N(~*~6)~c~c~5)"
 carbene_fac_skeleton = cast(Mol, MolFromSmarts(carbene_skeleton_smarts))
 transfer_conformation(carbene_fac, carbene_fac_skeleton)
 carbene_mer_skeleton = cast(Mol, MolFromSmarts(carbene_skeleton_smarts))
