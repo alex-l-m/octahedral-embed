@@ -18,11 +18,6 @@ def min_angle(mol, metal="Ir", conformer_index=0):
     return np.min(distances[:12])
 
 
-def dist_3d(a, b):
-    """Calculate the Euclidean distance between two points in 3D space."""
-    return np.sqrt(np.sum((np.array(a) - np.array(b)) ** 2, axis=0))
-
-
 def angle_3d(a, b):
     """Calculate the angle between two vectors in 3D space."""
     v1_u = unit_vector(a)
