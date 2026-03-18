@@ -7,7 +7,7 @@ Provides the function `octahedral_embed` to add coordinates to RDKit molecules, 
 `octahedral_embed` works by matching the input molecule to a template "core", containing the iridium and surrounding atoms.
 `octahedral_embed` provides control over the isomer through the `isomer` argument, by selecting a template with the right isomer.
 
-Currently, `octahedral_embed` works for N^C ligands, generating the fac or mer isomers.
+Currently, `octahedral_embed` works for N^C ligands and supported carbene ligands, generating the fac or mer isomers.
 
 Templates are currently based on crystal structures from the Cambridge Structural Database.
 
@@ -19,8 +19,7 @@ To install, run in the repo root:
 pip install .
 ```
 
-The only dependency is RDKit itself.
-This dependency is not enforced, so install into an environment that already has RDKit.
+The package depends on RDKit.
 
 ## Usage
 
@@ -89,4 +88,22 @@ Chem.MolToMolFile(irppy3, 'irppy3_fac.mol')
 # Save the mer isomer
 octahedral_embed(irppy3, isomer='mer')
 Chem.MolToMolFile(irppy3, 'irppy3_mer.mol')
+```
+
+For a carbene emitter, here is a simple example for Ir(pmb)₃.
+
+```python
+from rdkit import Chem
+from octahedral_embed import octahedral_embed
+from octahedral_embed.construction import ligate
+
+# pmb ligand
+# Use dummy atoms (*) at the chelation sites
+# Use a double bond (=*) for the carbene carbon
+pmb = Chem.MolFromSmiles('*c1ccccc1N1C(=*)N(C)c2ccccc21')
+
+irpmb3 = Chem.AddHs(ligate([Chem.Mol(pmb) for _ in range(3)]))
+
+octahedral_embed(irpmb3, isomer='fac')
+Chem.MolToMolFile(irpmb3, 'irpmb3_fac.mol')
 ```
