@@ -23,10 +23,6 @@ CARBENE_SKELETON_SMARTS = (
     "(=[CH0](~N(~*)~*~6)~N(~*~6)~c~c~5)"
 )
 
-# Backward-compatible aliases for the public SMARTS constants.
-facmer_skeleton_smarts = FACMER_SKELETON_SMARTS
-carbene_skeleton_smarts = CARBENE_SKELETON_SMARTS
-
 
 @dataclass(frozen=True)
 class FamilySpec:
