@@ -6,6 +6,11 @@ from rdkit.Chem.rdchem import Atom, Mol, RWMol
 from rdkit.Chem.rdmolfiles import MolFromSmiles
 from rdkit.Chem.rdmolops import CombineMols, Kekulize, SanitizeMol
 
+def set_single_iridium_formal_charge_zero(mol: Chem.Mol) -> None:
+    (ir_idx,) = (atom.GetIdx() for atom in mol.GetAtoms() if atom.GetSymbol() == "Ir")
+    mol.GetAtomWithIdx(ir_idx).SetFormalCharge(0)
+    mol.UpdatePropertyCache(strict=False)
+
 
 def ligate(
     ligands: Sequence[Mol],

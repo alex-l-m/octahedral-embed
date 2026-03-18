@@ -7,7 +7,7 @@ from rdkit.Chem.rdmolfiles import MolFromMol2File, MolFromSmarts
 from rdkit.Chem.rdMolTransforms import CanonicalizeConformer
 from rdkit.Chem.rdmolops import RemoveStereochemistry
 
-from .construction import make_bonds_dative
+from .construction import make_bonds_dative, set_single_iridium_formal_charge_zero
 
 FACMER_SKELETON_SMARTS = (
     "[Ir]123"
@@ -71,6 +71,8 @@ def load_template(filename: str) -> Mol:
     # templates
     raw_mol = MolFromMol2File(inpath)
     assert raw_mol is not None
+    # Set iridium formal charge to zero
+    set_single_iridium_formal_charge_zero(raw_mol)
     # Stereochemistry makes template matching more strict
     RemoveStereochemistry(raw_mol)
     # Convert from CSD bond conventions, to respect RDKit valence rules

@@ -10,7 +10,7 @@ from .templates import (
     fac_skeletons,
     mer_skeletons,
 )
-
+from .construction import set_single_iridium_formal_charge_zero
 
 def octahedral_embed(
     mol: Mol,
@@ -19,6 +19,12 @@ def octahedral_embed(
 ) -> int:
     # Make a copy of the molecule to avoid side effects (in particular, removing stereochemistry)
     work = Mol(mol)
+
+    # Set iridium formal charge to zero
+    # RDKit assigns some crazy formal charges to iridium
+    # This decreases the rate of failures when testing on molecules
+    # loaded from the CSD
+    set_single_iridium_formal_charge_zero(work)
 
     # Needed for some of the mol2 files I got from CSD
     # Will not be able to embed with stereochemistry
