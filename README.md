@@ -29,7 +29,7 @@ This dependency is not enforced, so install into an environment that already has
 The usage of `octahedral_embed` is similar to RDKit's `EmbedMolecule`, but with an extra `isomer` argument.
 
 ```python
-octahedral_embed(rdkit_mol, isomer, clearConfs=False)
+octahedral_embed(rdkit_mol, isomer, clearConfs=True)
 ```
 
 * `rdkit_mol`: RDKit `Mol` (expected to have explicit hydrogens)
@@ -38,15 +38,20 @@ octahedral_embed(rdkit_mol, isomer, clearConfs=False)
 
 * clearConfs: Boolean
 
-Modifies `rdkit_mol` in place, and returns nothing.
+Modifies `rdkit_mol` in place.
 Removes all conformers if clearConfs is True, then adds one new conformer.
 
 Returns the index of the added conformer.
 
-### Function `ligate`
+### Molecule-construction utilities
+
+Utilities for building input molecules live in `octahedral_embed.construction`.
+These currently include `ligate` and `make_bonds_dative`.
+
+#### Function `ligate`
 
 For convenience, there is also a `ligate` function that will attach ligands to iridium, without adding a geometry.
-Ligands must be given as RDKit molecules, with bonds to dummy atoms (symbol "*") where the ligand chelates the metal.
+Ligands must be given as RDKit molecules, with bonds to dummy atoms (symbol `"*"`) where the ligand chelates the metal.
 
 ```python
 ligate(ligands, metal_atom_element="Ir", metal_atom=None)
@@ -56,7 +61,7 @@ ligate(ligands, metal_atom_element="Ir", metal_atom=None)
 
 * `metal_atom_element`: String with the element of the metal to chelate to.
 
-* `metal_atom`: As an optional alternative to specifying `metal_atom_element`, an RDKit `Atom` object to chelate to.
+* `metal_atom`: As an optional alternative to specifying `metal_atom_element`, an RDKit `Mol` containing the metal atom to chelate to.
 
 Returns: an RDKit `Mol` containing the metal with ligands attached, bonding to the metal at the same sites and with the same bond types as they were bonded to the dummy atoms.
 
@@ -66,7 +71,8 @@ As an example, consider generating the geometry of Ir(ppy)₃.
 
 ```python
 from rdkit import Chem
-from octahedral_embed import ligate, octahedral_embed
+from octahedral_embed import octahedral_embed
+from octahedral_embed.construction import ligate
 
 # Phenylpyridine ligand
 # Use dummy atoms (*) at the chelation sites
