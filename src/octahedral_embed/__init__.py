@@ -1,7 +1,7 @@
 from typing import Literal
 
 from rdkit.Chem import rdDistGeom
-from rdkit.Chem.rdchem import Mol
+from rdkit.Chem.rdchem import Mol, SubstructMatchParameters
 
 from .constrained_embed import ConstrainedEmbed_withParams
 from .isomer import assert_isomer
@@ -40,8 +40,16 @@ def octahedral_embed(
     else:
         raise ValueError(f"Isomer should be \"mer\" or \"fac\", given {isomer}")
     finished = False
+
+    # Don't use chirality in the substruct match
+    # Hopefully my code stripping stereochemistry from the iridium atom is no
+    # longer necessary to achieve a match (though it may still be necessary for
+    # embedding)
+    match_params = SubstructMatchParameters()
+    match_params.useChirality = False
+
     for skeleton in skeletons:
-        if len(work.GetSubstructMatch(skeleton)) > 0:
+        if len(work.GetSubstructMatch(skeleton, params=match_params)) > 0:
             ps = rdDistGeom.ETKDGv3()
 
             work = ConstrainedEmbed_withParams(work, skeleton, params=ps)
