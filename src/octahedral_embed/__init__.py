@@ -41,6 +41,10 @@ def octahedral_embed(
         raise ValueError(f"Isomer should be \"mer\" or \"fac\", given {isomer}")
     finished = False
 
+    # I do multiple embedding attempts, and may get a different
+    # exception on each. I'll raise the last exception if so
+    last_exc: Exception | None = None
+
     # Don't use chirality in the substruct match
     # Hopefully my code stripping stereochemistry from the iridium atom is no
     # longer necessary to achieve a match (though it may still be necessary for
@@ -50,13 +54,21 @@ def octahedral_embed(
 
     for skeleton in skeletons:
         if len(work.GetSubstructMatch(skeleton, params=match_params)) > 0:
-            ps = rdDistGeom.ETKDGv3()
+            attempts = range(3)
+            for attempt in attempts:
+                try:
+                    ps = rdDistGeom.ETKDGv3()
 
-            work = ConstrainedEmbed_withParams(work, skeleton, params=ps)
-            assert_isomer(work, isomer)
-            finished = True
+                    work = ConstrainedEmbed_withParams(work, skeleton, params=ps)
+                    assert_isomer(work, isomer)
+                    finished = True
+                    break
+                except Exception as exc:  # noqa: BLE001
+                    last_exc = exc
             break
     if not finished:
+        if last_exc is not None:
+            raise last_exc
         raise ValueError("Doesn't match templates")
     # Copy the conformer back to the original molecule
     new_conf = work.GetConformer()
