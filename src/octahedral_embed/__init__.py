@@ -44,19 +44,6 @@ def octahedral_embed(
         if len(work.GetSubstructMatch(skeleton)) > 0:
             ps = rdDistGeom.ETKDGv3()
 
-            # Carbene embedding with a large template gives output "Could not
-            # triangle bounds smooth molecule" and raises a ValueError. But
-            # with a small template the imidazole is horribly twisted, probably
-            # because it thinks the atoms are aliphatic. Ignoring smoothing
-            # failures with the large template, it works. Now I'm hoping that
-            # if I encode carbenes more reasonably, I won't have these issues.
-            # However, ignoring smoothing failures is always an option later if
-            # required.
-            #ps.ignoreSmoothingFailures = True
-
-            ps.timeout = 5
-            ps.maxIterations = 20
-
             work = ConstrainedEmbed_withParams(work, skeleton, params=ps)
             assert_isomer(work, isomer)
             finished = True
