@@ -5,7 +5,7 @@ from typing import Dict, Tuple, cast
 from rdkit.Chem.rdchem import Conformer, Mol
 from rdkit.Chem.rdmolfiles import MolFromMol2File, MolFromSmarts
 from rdkit.Chem.rdMolTransforms import CanonicalizeConformer
-from rdkit.Chem.rdmolops import RemoveStereochemistry
+from .stereo import clear_stereo_on_element
 
 from .construction import make_bonds_dative, set_single_iridium_formal_charge_zero
 
@@ -74,7 +74,8 @@ def load_template(filename: str) -> Mol:
     # Set iridium formal charge to zero
     set_single_iridium_formal_charge_zero(raw_mol)
     # Stereochemistry makes template matching more strict
-    RemoveStereochemistry(raw_mol)
+    # Only clear metal-center stereochemistry in the template
+    clear_stereo_on_element(raw_mol, "Ir")
     # Convert from CSD bond conventions, to respect RDKit valence rules
     dative_mol = make_bonds_dative(raw_mol)
     # Center the molecule

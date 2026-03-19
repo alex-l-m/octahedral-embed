@@ -2,7 +2,6 @@ from typing import Literal
 
 from rdkit.Chem import rdDistGeom
 from rdkit.Chem.rdchem import Mol
-from rdkit.Chem.rdmolops import RemoveStereochemistry
 
 from .constrained_embed import ConstrainedEmbed_withParams
 from .isomer import assert_isomer
@@ -11,6 +10,7 @@ from .templates import (
     mer_skeletons,
 )
 from .construction import set_single_iridium_formal_charge_zero
+from .stereo import clear_stereo_on_element
 
 def octahedral_embed(
     mol: Mol,
@@ -28,7 +28,8 @@ def octahedral_embed(
 
     # Needed for some of the mol2 files I got from CSD
     # Will not be able to embed with stereochemistry
-    RemoveStereochemistry(work)
+    # Only clearing on iridium seems to get most or all of the benefit
+    clear_stereo_on_element(work, "Ir")
 
     work.RemoveAllConformers()
 
