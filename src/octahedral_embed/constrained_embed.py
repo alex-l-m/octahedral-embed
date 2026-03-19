@@ -2,7 +2,7 @@ from typing import Any, Optional
 
 from rdkit.Chem import rdDistGeom, rdForceFieldHelpers
 from rdkit.Chem.rdMolAlign import AlignMol
-from rdkit.Chem.rdchem import Mol
+from rdkit.Chem.rdchem import Mol, SubstructMatchParameters
 
 from .isoctahedral import isoctahedral
 
@@ -40,7 +40,14 @@ def ConstrainedEmbed_withParams(
     mol : RDKit Mol
         With a single embedded conformer and property 'EmbedRMS'.
     """
-    match = mol.GetSubstructMatch(core)
+    # Don't use chirality in the substruct match
+    # Hopefully my code stripping stereochemistry from the iridium atom is no
+    # longer necessary to achieve a match (though it may still be necessary for
+    # embedding)
+    match_params = SubstructMatchParameters()
+    match_params.useChirality = False
+
+    match = mol.GetSubstructMatch(core, match_params)
     if not match:
         raise ValueError("molecule doesn't match the core")
 
