@@ -3,13 +3,15 @@ Provides the function `octahedral_embed` to add coordinates to RDKit molecules, 
 
 ## Functionality
 
-`octahedral_embed` is intended to be used in place of RDKit's `EmbedMolecule`, solving two problems: that `EmbedMolecule` is not parametrized for metals and will often produce incorrect coordination geometry, and that when it does provide the right coordination, the isomer will be random rather than controlled.
-`octahedral_embed` works by matching the input molecule to a template "core", containing the iridium and surrounding atoms.
-`octahedral_embed` provides control over the isomer through the `isomer` argument, by selecting a template with the right isomer.
+`octahedral_embed` is intended to be used in place of RDKit's `EmbedMolecule`.
+It works by matching the input molecule to a template "core", containing the iridium and surrounding atoms.
+It provides control over the isomer by selecting an isomer-specific template.
+The templates were extracted from crystal structures from the Cambridge Structural Database.
 
-Currently, `octahedral_embed` works for N^C ligands and supported carbene ligands, generating the fac or mer isomers.
+Currently, `octahedral_embed` can generate tris-bidentate complexes with three N^C ligands or three carbene ligands.
+The `isomer` argument controls whether the output is the fac or mer isomer.
 
-Templates are currently based on crystal structures from the Cambridge Structural Database.
+`octahedral_embed` will become obsolete when (if?) the RDKit properly implements non-tetrahedral stereochemistry and includes metals in force fields.
 
 ## Installation
 
