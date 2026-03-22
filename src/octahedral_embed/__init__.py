@@ -11,6 +11,7 @@ from .templates import (
 )
 from .construction import set_single_iridium_formal_charge_zero
 from .stereo import clear_stereo_on_element
+from .bond_distance_check import bond_distance_check
 from .input_checks import non_iridium_atoms_have_uff_params
 
 def octahedral_embed(
@@ -60,6 +61,8 @@ def octahedral_embed(
 
             work = ConstrainedEmbed_withParams(work, skeleton, params=ps)
             assert_isomer(work, isomer)
+            if not bond_distance_check(work):
+                raise ValueError("Embedded molecule has unreasonable bond distances")
             finished = True
             break
     if not finished:
