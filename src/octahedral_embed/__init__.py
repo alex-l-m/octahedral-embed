@@ -11,12 +11,18 @@ from .templates import (
 )
 from .construction import set_single_iridium_formal_charge_zero
 from .stereo import clear_stereo_on_element
+from .input_checks import non_iridium_atoms_have_uff_params
 
 def octahedral_embed(
     mol: Mol,
     isomer: Literal['fac', 'mer'],
     clearConfs: bool = True,
 ) -> int:
+
+    # Check input
+    if not non_iridium_atoms_have_uff_params(mol):
+        raise ValueError("Molecule not supported by UFF")
+
     # Make a copy of the molecule to avoid side effects (in particular, removing stereochemistry)
     work = Mol(mol)
 
