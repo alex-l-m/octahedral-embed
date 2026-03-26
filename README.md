@@ -1,4 +1,4 @@
-Template-based geometry generation for iridium-based phosphorescent emitter molecules, with explicit fac/mer control.
+Template-based geometry generation for iridium-based phosphorescent emitter molecules, with control of the isomer.
 Provides the function `octahedral_embed` to add coordinates to RDKit molecules, using RDKit's distance geometry but constrained to correct octahedral coordination, with control of the isomer.
 
 ## Functionality
@@ -51,8 +51,9 @@ These currently include `ligate` and `make_bonds_dative`.
 
 #### Function `ligate`
 
-For convenience, there is also a `ligate` function that will attach ligands to iridium, without adding a geometry.
+`ligate` attaches ligands to iridium, without adding a geometry.
 Ligands must be given as RDKit molecules, with bonds to dummy atoms (symbol `"*"`) where the ligand chelates the metal.
+Ligands in this format are provided by [Precursors2Pixels](https://github.com/suhasm/precursors2pixels).
 
 ```python
 ligate(ligands, metal_atom_element="Ir", metal_atom=None)
@@ -68,7 +69,7 @@ Returns: an RDKit `Mol` containing the metal with ligands attached, bonding to t
 
 ## Example
 
-As an example, consider generating the geometry of Ir(ppy)₃.
+As an example, consider generating the geometry of Ir(ppy)₃:
 
 ```python
 from rdkit import Chem
@@ -92,7 +93,7 @@ octahedral_embed(irppy3, isomer='mer')
 Chem.MolToMolFile(irppy3, 'irppy3_mer.mol')
 ```
 
-For a carbene emitter, here is a simple example for Ir(pmb)₃.
+To try it out on a carbene emitter, this example generates a geometry for Ir(pmb)₃:
 
 ```python
 from rdkit import Chem
